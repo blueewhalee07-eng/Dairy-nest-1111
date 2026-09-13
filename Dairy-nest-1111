@@ -1,0 +1,179 @@
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import {
+  SafeAreaView,
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  TextInput,
+  StyleSheet,
+  StatusBar,
+  Alert,
+  ActivityIndicator,
+  ScrollView,
+  Linking,
+  Image,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const getDirectDriveUrl = (shareLink) => {
+  const match = shareLink.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  return match ? `https://lh3.googleusercontent.com/d/${match[1]}` : shareLink;
+};
+
+const FIREBASE_PROJECT_ID = 'dairy-nest-6b0e2';
+const FLAT_DELIVERY_FEE = 25;
+const FREE_DELIVERY_THRESHOLD = 200;
+const ADMIN_PIN = '0707';
+const DELIVERY_PIN = '1111';
+const ADMIN_WHATSAPP_PHONE = '9931507392';
+const UPI_ID = 'csurjeet-13@axl';
+const UPI_PAYEE_NAME = 'Dairy Nest';
+
+const DELIVERY_AREAS = [
+  'Sahebganj',
+  'Newaji Tola',
+  'Municipality Chowk',
+  'Salempur',
+  'Bhagwan Bazar',
+  'Mauna Chowk',
+];
+
+const INITIAL_DELIVERY_AGENTS = [
+  { name: 'Rohan Kumar', phone: '9876543210' },
+  { name: 'Amit Singh', phone: '9123456789' },
+  { name: 'Vikas Gupta', phone: '9988776655' },
+];
+
+const FIRESTORE_BASE_URL =
+  'https://firestore.googleapis.com/v1/projects/' +
+  FIREBASE_PROJECT_ID +
+  '/databases/(default)/documents/orders';
+const STOCK_BASE_URL =
+  'https://firestore.googleapis.com/v1/projects/' +
+  FIREBASE_PROJECT_ID +
+  '/databases/(default)/documents/stock';
+
+const INITIAL_PRODUCTS = [
+  { id: '1', name: 'Amul Organic Tea (250 g)', cat: 'Organic & Staples', price: 150, icon: 'leaf' },
+  { id: '2', name: 'Amul Organic Masoor Dal 1 kg', cat: 'Organic & Staples', price: 165, icon: 'nutrition' },
+  { id: '3', name: 'Amul Organic Toor Dal 500gm', cat: 'Organic & Staples', price: 125, icon: 'nutrition' },
+  { id: '4', name: 'Amul Organic Peanuts (500 g)', cat: 'Organic & Staples', price: 120, icon: 'nutrition' },
+  { id: '5', name: 'Amul Organic Whole Wheat Atta (5 kg)', cat: 'Organic & Staples', price: 240, icon: 'basket' },
+  { id: '6', name: 'Amul Organic Sona Masoori Rice (1 kg)', cat: 'Organic & Staples', price: 320, icon: 'basket' },
+  { id: '7', name: 'Amul Natural Honey (200 g Squeeze Bottle)', cat: 'Organic & Staples', price: 100, icon: 'flask' },
+  { id: '8', name: 'Amul Organic Poha', cat: 'Organic & Staples', price: 60, icon: 'nutrition' },
+  { id: '9', name: 'Amul 1Kg Brown Sugar', cat: 'Organic & Staples', price: 80, icon: 'basket' },
+  { id: '10', name: 'Amul Gold Milk (500 ml Pouch)', cat: 'Fresh & Refrigerated Dairy', price: 35, icon: 'water' },
+  { id: '11', name: 'Amul Gold Full Cream Milk (1 L Tetra Pack)', cat: 'Fresh & Refrigerated Dairy', price: 83, icon: 'water' },
+  { id: '12', name: 'Amul Malai Paneer (200 g Pouch)', cat: 'Fresh & Refrigerated Dairy', price: 95, icon: 'square' },
+  { id: '13', name: 'Amul Paneer 1Kg', cat: 'Fresh & Refrigerated Dairy', price: 435, icon: 'square' },
+  { id: '14', name: 'Amul Masti Dahi Pouch', cat: 'Fresh & Refrigerated Dairy', price: 35, icon: 'ice-cream' },
+  { id: '15', name: 'Amul Dahi Cup', cat: 'Fresh & Refrigerated Dairy', price: 25, icon: 'ice-cream' },
+  { id: '16', name: 'Amul Meetha Dahi (Sweet Curd Cups)', cat: 'Fresh & Refrigerated Dairy', price: 22, icon: 'ice-cream' },
+  { id: '17', name: 'Amul Fresh Cream 250ml', cat: 'Fresh & Refrigerated Dairy', price: 75, icon: 'flask' },
+  { id: '18', name: 'Amul Fresh Cream 1 litre', cat: 'Fresh & Refrigerated Dairy', price: 250, icon: 'flask' },
+  { id: '19', name: 'Amul Pasteurised Butter 200 gm', cat: 'Butter, Cheese & Spreads', price: 130, icon: 'square-outline' },
+  { id: '20', name: 'Amul Pasteurised Butter 100 gm', cat: 'Butter, Cheese & Spreads', price: 63, icon: 'square-outline' },
+  { id: '21', name: 'Amul Pasteurised Butter 500 gm', cat: 'Butter, Cheese & Spreads', price: 310, icon: 'square-outline' },
+  { id: '22', name: 'Amul Processed Cheese Spread Spicy Garlic', cat: 'Butter, Cheese & Spreads', price: 115, icon: 'restaurant' },
+  { id: '23', name: 'Amul Processed Cheese Spread Plain', cat: 'Butter, Cheese & Spreads', price: 115, icon: 'restaurant' },
+  { id: '24', name: 'Amul Cream Cheese Spread', cat: 'Butter, Cheese & Spreads', price: 125, icon: 'restaurant' },
+  { id: '25', name: 'Amul Cheese Slices 5 piece', cat: 'Butter, Cheese & Spreads', price: 82, icon: 'restaurant' },
+  { id: '26', name: 'Amul Cheese Slices 10 pieces', cat: 'Butter, Cheese & Spreads', price: 145, icon: 'restaurant' },
+  { id: '27', name: 'Amul Dice Cheese 200 gm', cat: 'Butter, Cheese & Spreads', price: 125, icon: 'restaurant' },
+  { id: '28', name: 'Amul Pure Ghee Tetra 1L', cat: 'Ghee & Infant Formula', price: 660, icon: 'flask' },
+  { id: '29', name: 'Amul Pure Ghee Tin 1L', cat: 'Ghee & Infant Formula', price: 670, icon: 'flask' },
+  { id: '30', name: 'Amul Cow Ghee 1 L Tin', cat: 'Ghee & Infant Formula', price: 700, icon: 'flask' },
+  { id: '31', name: 'Sagar Pure Ghee 1 kg Tin', cat: 'Ghee & Infant Formula', price: 670, icon: 'flask' },
+  { id: '32', name: 'Amulspray Infant Milk Food (200 g Box)', cat: 'Ghee & Infant Formula', price: 113, icon: 'nutrition' },
+  { id: '33', name: 'Amul Pure Ghee Plastic', cat: 'Ghee & Infant Formula', price: 670, icon: 'flask' },
+  { id: '34', name: 'Amul Arabica Coffee', cat: 'Beverages & Drinks', price: 100, icon: 'cafe' },
+  { id: '35', name: 'Amul Badam Shakers', cat: 'Beverages & Drinks', price: 40, icon: 'beer' },
+  { id: '36', name: 'Amul Kool Glass', cat: 'Beverages & Drinks', price: 30, icon: 'beer' },
+  { id: '37', name: 'Amul Milk Shake Double Chocolate', cat: 'Beverages & Drinks', price: 30, icon: 'beer' },
+  { id: '38', name: 'Amul Milk Shake Double Chocolate Can', cat: 'Beverages & Drinks', price: 40, icon: 'beer' },
+  { id: '39', name: 'Amul Kadhai Doodh', cat: 'Beverages & Drinks', price: 25, icon: 'beer' },
+  { id: '40', name: 'Amul Haldi Doodh Can', cat: 'Beverages & Drinks', price: 25, icon: 'beer' },
+  { id: '41', name: 'Amul Honey Doodh Can', cat: 'Beverages & Drinks', price: 25, icon: 'beer' },
+  { id: '42', name: 'Amul Saffron Doodh Can', cat: 'Beverages & Drinks', price: 25, icon: 'beer' },
+  { id: '43', name: 'Amul Lassi Tetra', cat: 'Beverages & Drinks', price: 20, icon: 'beer' },
+  { id: '44', name: 'Amul Lassi Cap', cat: 'Beverages & Drinks', price: 25, icon: 'beer' },
+  { id: '45', name: 'Amul Lassi Rose', cat: 'Beverages & Drinks', price: 25, icon: 'beer' },
+  { id: '46', name: 'Amul Lassi Kesar', cat: 'Beverages & Drinks', price: 22, icon: 'beer' },
+  { id: '47', name: 'Amul Buttermilk', cat: 'Beverages & Drinks', price: 15, icon: 'beer' },
+  { id: '48', name: 'Amul 1 L Buttermilk', cat: 'Beverages & Drinks', price: 70, icon: 'beer' },
+  { id: '49', name: 'Amul 1 L Lassi', cat: 'Beverages & Drinks', price: 90, icon: 'beer' },
+  { id: '50', name: 'Amul Kesar Peda (200 g Box)', cat: 'Packaged Sweets & Mithai', price: 140, icon: 'gift' },
+  { id: '51', name: 'Amul Malai Peda (200 g Box)', cat: 'Packaged Sweets & Mithai', price: 130, icon: 'gift' },
+  { id: '52', name: 'Amul Milk Cake (200 g Box)', cat: 'Packaged Sweets & Mithai', price: 140, icon: 'gift' },
+  { id: '53', name: 'Amul Besan Laddoo (200 g Box)', cat: 'Packaged Sweets & Mithai', price: 130, icon: 'gift' },
+  { id: '54', name: 'Amul Kaju Katli (200 g Tray)', cat: 'Packaged Sweets & Mithai', price: 250, icon: 'gift' },
+  { id: '55', name: 'Amul Gud (200 gm)', cat: 'Packaged Sweets & Mithai', price: 275, icon: 'gift' },
+  { id: '56', name: 'Amul Gulab Jamun 1 kg Tin', cat: 'Packaged Sweets & Mithai', price: 270, icon: 'gift' },
+  { id: '57', name: 'Amul Rasogolla 500gm Tin', cat: 'Packaged Sweets & Mithai', price: 125, icon: 'gift' },
+  { id: '58', name: 'Amul Rasmalai Tubs (Per Cup)', cat: 'Packaged Sweets & Mithai', price: 55, icon: 'gift' },
+  { id: '59', name: 'Amul Basundi Kesar Elaichi (250 ml Pack)', cat: 'Packaged Sweets & Mithai', price: 50, icon: 'gift' },
+  { id: '60', name: "Amul Bakery Fruit 'N' Nut Cake", cat: 'Packaged Sweets & Mithai', price: 100, icon: 'gift' },
+  { id: '61', name: 'Amul Dark Chocolate', cat: 'Chocolates & Snacks', price: 45, icon: 'nutrition' },
+  { id: '62', name: "Amul Fruit 'N' Nut Chocolate", cat: 'Chocolates & Snacks', price: 45, icon: 'nutrition' },
+  { id: '63', name: 'Amul Sugar Free Dark Chocolate', cat: 'Chocolates & Snacks', price: 45, icon: 'nutrition' },
+  { id: '64', name: 'Amul Chocolate Syrup (Per Sachet)', cat: 'Chocolates & Snacks', price: 10, icon: 'nutrition' },
+  { id: '65', name: 'Amul Specialty Chocolates Gift Box', cat: 'Chocolates & Snacks', price: 200, icon: 'gift' },
+  { id: '66', name: 'Amul Almondo Box', cat: 'Chocolates & Snacks', price: 210, icon: 'gift' },
+  { id: '67', name: 'Amul Truffles Box', cat: 'Chocolates & Snacks', price: 210, icon: 'gift' },
+  { id: '68', name: 'Amul Chocominis', cat: 'Chocolates & Snacks', price: 140, icon: 'nutrition' },
+  { id: '69', name: 'Amul Chocozoo', cat: 'Chocolates & Snacks', price: 130, icon: 'nutrition' },
+  { id: '70', name: 'Amul Pro Energy Bar', cat: 'Chocolates & Snacks', price: 22, icon: 'flash' },
+  { id: '71', name: 'Amul Almond Bar', cat: 'Chocolates & Snacks', price: 30, icon: 'flash' },
+  { id: '72', name: 'Amul Cake Magic Black Forest Eggless Ice Cream Cake (500 ml)', cat: 'Ice Creams & Desserts', price: 350, icon: 'ice-cream' },
+  { id: '73', name: 'Amul Frostik (Dark Chocolate Bar)', cat: 'Ice Creams & Desserts', price: 40, icon: 'ice-cream' },
+  { id: '74', name: 'Frostik Gold Chocolate', cat: 'Ice Creams & Desserts', price: 45, icon: 'ice-cream' },
+  { id: '75', name: 'Amul Pista Malai Kulfi', cat: 'Ice Creams & Desserts', price: 30, icon: 'ice-cream' },
+  { id: '76', name: 'Rajbhog Kulfi Sticks', cat: 'Ice Creams & Desserts', price: 30, icon: 'ice-cream' },
+  { id: '77', name: 'Amul Punjabi Kulfi', cat: 'Ice Creams & Desserts', price: 30, icon: 'ice-cream' },
+  { id: '78', name: 'Amul Tru Pineapple', cat: 'Ice Creams & Desserts', price: 50, icon: 'ice-cream' },
+  { id: '79', name: 'Amul Tender Coconut', cat: 'Ice Creams & Desserts', price: 40, icon: 'ice-cream' },
+  { id: '80', name: 'Amul Sitaphal Bliss', cat: 'Ice Creams & Desserts', price: 60, icon: 'ice-cream' },
+  { id: '81', name: 'Amul Tru Spicy Guava', cat: 'Ice Creams & Desserts', price: 50, icon: 'ice-cream' },
+  { id: '82', name: 'Amul Butterscotch Gold', cat: 'Ice Creams & Desserts', price: 40, icon: 'ice-cream' },
+  { id: '83', name: 'Amul Butterscotch Bliss', cat: 'Ice Creams & Desserts', price: 35, icon: 'ice-cream' },
+  { id: '84', name: 'Amul Tricone Black Currant', cat: 'Ice Creams & Desserts', price: 30, icon: 'ice-cream' },
+  { id: '85', name: 'Amul Tricone Butterscotch', cat: 'Ice Creams & Desserts', price: 40, icon: 'ice-cream' },
+  { id: '86', name: 'Amul Belgian Chocolate', cat: 'Ice Creams & Desserts', price: 50, icon: 'ice-cream' },
+  { id: '87', name: 'Amul Ice Cream Tubs 1L King Alphonso', cat: 'Ice Creams & Desserts', price: 260, icon: 'ice-cream' },
+  { id: '88', name: 'Amul Ice Cream Tubs 1L Butterscotch', cat: 'Ice Creams & Desserts', price: 260, icon: 'ice-cream' },
+  { id: '89', name: 'Amul Ice Cream Tubs 1L Sitaphal', cat: 'Ice Creams & Desserts', price: 385, icon: 'ice-cream' },
+  { id: '90', name: 'Amul Ice Cream Tubs 1L Faaloda', cat: 'Ice Creams & Desserts', price: 300, icon: 'ice-cream' },
+  { id: '91', name: 'Amul Ice Cream Tubs 1L Chocochip', cat: 'Ice Creams & Desserts', price: 230, icon: 'ice-cream' },
+  { id: '92', name: 'Amul Golden Pearl Jumbo Cup', cat: 'Ice Creams & Desserts', price: 35, icon: 'ice-cream' },
+  { id: '93', name: 'Amul Shalimar', cat: 'Ice Creams & Desserts', price: 35, icon: 'ice-cream' },
+  { id: '94', name: "Amul Fruit 'N Nut", cat: 'Ice Creams & Desserts', price: 35, icon: 'ice-cream' },
+  { id: '95', name: 'Amul Rajbhog Jumbo Cup', cat: 'Ice Creams & Desserts', price: 35, icon: 'ice-cream' },
+  { id: '96', name: 'Amul King Alphonso Jumbo Cup', cat: 'Ice Creams & Desserts', price: 40, icon: 'ice-cream' },
+  { id: '97', name: 'Amul Chocochip Jumbo Cup', cat: 'Ice Creams & Desserts', price: 50, icon: 'ice-cream' },
+  { id: '98', name: 'Amul Kesar Kulfi', cat: 'Ice Creams & Desserts', price: 20, icon: 'ice-cream' },
+  { id: '99', name: 'Amul Rajwadi Kulfi', cat: 'Ice Creams & Desserts', price: 10, icon: 'ice-cream' },
+  { id: '100', name: 'Amul Brick Butterscotch', cat: 'Ice Creams & Desserts', price: 135, icon: 'ice-cream' },
+  { id: '101', name: 'Amul Brick Chocolate', cat: 'Ice Creams & Desserts', price: 130, icon: 'ice-cream' },
+  { id: '102', name: 'Amul Brick Vanilla', cat: 'Ice Creams & Desserts', price: 115, icon: 'ice-cream' },
+  { id: '103', name: 'Amul Brick Strawberry', cat: 'Ice Creams & Desserts', price: 120, icon: 'ice-cream' },
+  { id: '104', name: 'Amul Brick Tuti Fruti', cat: 'Ice Creams & Desserts', price: 130, icon: 'ice-cream' },
+  { id: '105', name: 'Amul Brick Kesar Pista', cat: 'Ice Creams & Desserts', price: 195, icon: 'ice-cream' },
+  { id: '106', name: 'India Twilight Tryst (Single Origin)', cat: 'Chocolate Bar', price: 200, icon: 'ribbon' },
+  { id: '107', name: 'Velvett Milk Chocolate', cat: 'Chocolate Bar', price: 200, icon: 'ribbon' },
+  { id: '108', name: '90% Bitter Dark Chocolate', cat: 'Chocolate Bar', price: 180, icon: 'ribbon' },
+  { id: '109', name: 'Peru Dark Amazon (55% Cocoa)', cat: 'Chocolate Bar', price: 180, icon: 'ribbon' },
+  { id: '110', name: 'Dark Chocolate (55% Cocoa)', cat: 'Chocolate Bar', price: 180, icon: 'ribbon' },
+  { id: '111', name: "Fruit 'N' Nut Dark Chocolate", cat: 'Chocolate Bar', price: 180, icon: 'ribbon' },
+  { id: '112', name: 'Crunchy Peanut Chocolate Bar', cat: 'Chocolate Bar', price: 180, icon: 'ribbon' },
+  { id: '113', name: 'White Limón Chocolate', cat: 'Chocolate Bar', price: 170, icon: 'ribbon' },
+  { id: '114', name: 'Sugar Free Dark Chocolate', cat: 'Chocolate Bar', price: 180, icon: 'ribbon' },
+  { id: '115', name: 'Milk Chocolate', cat: 'Chocolate Bar', price: 180, icon: 'ribbon' },
+  { id: '116', name: 'Milk Rusk', cat: 'Others', price: 45, icon: 'restaurant' },
+  { id: '117', name: 'Elaichi Rusk', cat: 'Others', price: 40, icon: 'restaurant' },
+  { id: '118', name: 'T-Special Rusk', cat: 'Others', price: 35, icon: 'restaurant' },
+];
+
+const CATEGORIES = ['All', ...new Set(INITIAL_PRODUCTS.map((p) => p.cat))];
