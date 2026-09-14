@@ -6,6 +6,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Dairy-nest-1111
 
     steps:
       - name: Checkout Code
@@ -50,5 +53,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-release-aab
-          path: android/app/build/outputs/bundle/release/app-release.aab
-          
+          path: Dairy-nest-1111/android/app/build/outputs/bundle/release/app-release.aab
