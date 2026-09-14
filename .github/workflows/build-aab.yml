@@ -1,14 +1,10 @@
-name: Build Android Release AAB
-
 on:
   workflow_dispatch:
+  name: Build Android Release AAB
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: Dairy-nest-1111
 
     steps:
       - name: Checkout Code
@@ -26,17 +22,18 @@ jobs:
           node-version: 18
 
       - name: Install dependencies
-        run: npm install --legacy-peer-deps
+        run: |
+          cd Dairy-nest-1111
+          npm install --legacy-peer-deps
 
       - name: Decode Keystore
         run: |
-          cd android
-          cd app
+          cd Dairy-nest-1111/android/app
           echo "${{ secrets.MYAPP_UPLOAD_STORE_FILE_BASE64 }}" | base64 --decode > upload-keystore.jks
 
       - name: Create local.properties
         run: |
-          echo "sdk.dir=/usr/local/lib/android/sdk" > android/local.properties
+          echo "sdk.dir=/usr/local/lib/android/sdk" > Dairy-nest-1111/android/local.properties
 
       - name: Build Android App Bundle (AAB)
         env:
@@ -45,7 +42,7 @@ jobs:
           MYAPP_UPLOAD_KEY_ALIAS: ${{ secrets.MYAPP_UPLOAD_KEY_ALIAS }}
           MYAPP_UPLOAD_KEY_PASSWORD: ${{ secrets.MYAPP_UPLOAD_KEY_PASSWORD }}
         run: |
-          cd android
+          cd Dairy-nest-1111/android
           chmod +x gradlew
           ./gradlew bundleRelease
 
@@ -54,3 +51,4 @@ jobs:
         with:
           name: app-release-aab
           path: Dairy-nest-1111/android/app/build/outputs/bundle/release/app-release.aab
+          
