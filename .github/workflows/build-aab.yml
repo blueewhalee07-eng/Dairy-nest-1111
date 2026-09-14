@@ -1,6 +1,8 @@
-on:
+name: Build Android Release AAB
+
+  on:
   workflow_dispatch:
-  name: Build Android Release AAB
+  :
 
 jobs:
   build:
