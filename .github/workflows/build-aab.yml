@@ -2,7 +2,7 @@ name: Build Android Release AAB
 
   on:
   workflow_dispatch:
-  :
+  
 
 jobs:
   build:
