@@ -24,11 +24,11 @@ jobs:
         with:
           node-version: '18'
 
-            - name: Install dependencies
+      - name: Install dependencies
         run: |
           cd Dairy-nest-1111
           npm install --legacy-peer-deps
-          
+
       - name: Decode Keystore
         run: |
           cd Dairy-nest-1111/android/app
