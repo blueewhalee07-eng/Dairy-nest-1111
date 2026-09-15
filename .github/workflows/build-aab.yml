@@ -1,7 +1,10 @@
 name: Build Android Release AAB
 
-  on: [workflow_dispatch, push]
-  
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -19,12 +22,10 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: '18'
 
       - name: Install dependencies
-        run: |
-          cd Dairy-nest-1111
-          npm install --legacy-peer-deps
+        run: npm install --legacy-peer-deps
 
       - name: Decode Keystore
         run: |
