@@ -1,9 +1,7 @@
 name: Build Android Release AAB
 
-  on:
-  workflow_dispatch:
-  push:
-    branches: [ main ]
+  on: [workflow_dispatch, push]
+  
 jobs:
   build:
     runs-on: ubuntu-latest
